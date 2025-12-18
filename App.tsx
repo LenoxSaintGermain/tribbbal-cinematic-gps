@@ -133,6 +133,27 @@ const INITIAL_SCENES: Scene[] = [
     cinematicIntent: 'Demonstrating the tactile provenance and soul of the charcoal strokes.',
     type: 'motion',
     metadata: { location: 'Benin City, NG', provenance: 'Royal Bini Collection', materials: 'Charcoal, Pencil, Vellum' }
+  },
+  {
+    id: 'sc7',
+    modality: 'video',
+    world: 'BUILD',
+    director: { 
+      id: 'd7', name: 'Tribbbal Initiative', handle: '@tribbbal_labs', 
+      avatar: 'https://picsum.photos/seed/tribbbal_sys/100', isOnline: true,
+      role: 'System Architects', city: 'The Ether' 
+    },
+    narrative: 'If software is eating the world, then culture deserves better utensils. This is not a feed. It is a cinematic navigation system.',
+    mediaUrl: 'https://cdn.midjourney.com/video/2356cef4-cd7d-4291-8895-d37383ed17a2/1.mp4',
+    mediaType: 'video',
+    timestamp: 'Post-Credits',
+    vibe: 'Manifesto',
+    pacing: 'slow',
+    tone: 'Provocative',
+    primaryEmotion: 'Clarity',
+    cinematicIntent: 'To dismantle the feed and reconstruct it as a journey of meaning.',
+    type: 'motion',
+    metadata: { location: 'The Blueprint', score: 'System Audio: On', camera: 'Generative Viewport' }
   }
 ];
 
