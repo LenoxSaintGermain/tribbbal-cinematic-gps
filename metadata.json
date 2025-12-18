@@ -1,0 +1,8 @@
+{
+  "name": "Tribbbal Cinematic Feed",
+  "description": "A high-fidelity, cinematic social media feed featuring dark elegance, Generative UI components, and Gemini-powered personalization.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
