@@ -195,11 +195,26 @@ const App: React.FC = () => {
     setIntent('ORIENTING');
   };
 
+  const updateActiveScene = (updatedScene: Scene) => {
+    setScenes(prev => {
+      const newScenes = [...prev];
+      newScenes[activeIdx] = updatedScene;
+      return newScenes;
+    });
+    setIntent('ORIENTING'); // Trigger orienting so user sees the change description
+  };
+
   const navigateToWorld = (world: WorldID) => {
     const firstInWorld = scenes.findIndex(s => s.world === world);
     if (firstInWorld !== -1) setActiveIdx(firstInWorld);
     
     setIsGPSOpen(false);
+    setIntent('CRUISING');
+  };
+
+  const returnToPortal = () => {
+    setIsGPSOpen(false);
+    setView('PORTAL');
     setIntent('CRUISING');
   };
 
@@ -252,7 +267,10 @@ const App: React.FC = () => {
         }}
         activeWorld={activeScene.world}
         onNavigate={navigateToWorld}
+        onHome={returnToPortal}
         onSceneSimulated={addSimulatedScene}
+        onSceneUpdated={updateActiveScene}
+        currentScene={activeScene}
       />
     </div>
   );

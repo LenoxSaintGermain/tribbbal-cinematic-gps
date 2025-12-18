@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { simulateCinematicScene } from '../services/geminiService';
+import { simulateCinematicScene, remixCinematicScene } from '../services/geminiService';
 import { Scene, WorldID, ForwardPath } from '../types';
 
 interface OmniPanelProps {
@@ -9,6 +9,9 @@ interface OmniPanelProps {
   activeWorld: WorldID;
   onNavigate: (world: WorldID) => void;
   onSceneSimulated: (scene: Scene) => void;
+  onSceneUpdated: (scene: Scene) => void;
+  onHome: () => void;
+  currentScene: Scene;
 }
 
 const OmniPanel: React.FC<OmniPanelProps> = ({ 
@@ -16,43 +19,69 @@ const OmniPanel: React.FC<OmniPanelProps> = ({
   onClose, 
   activeWorld, 
   onNavigate,
-  onSceneSimulated 
+  onSceneSimulated,
+  onSceneUpdated,
+  onHome,
+  currentScene
 }) => {
   const [manifesting, setManifesting] = useState(false);
   const [manifestPrompt, setManifestPrompt] = useState('');
+  const [mode, setMode] = useState<'CREATE' | 'REMIX'>('CREATE');
 
   if (!isOpen) return null;
 
   // Cinematic GPS Paths based on World Context
   const getForwardPaths = (): ForwardPath[] => {
+    const homePath: ForwardPath = { 
+      id: 'HOME', 
+      label: 'Return to Void', 
+      description: 'Disconnect and return to the portal', 
+      onSelect: onHome 
+    };
+
     switch (activeWorld) {
       case 'WATCH':
         return [
           { id: 'SEQ', label: 'Continue the Sequence', description: 'Deepen the immersion with related threads', onSelect: onClose },
           { id: 'CREATE', label: 'Enter Creation', description: 'Step into the studio and manifest a new scene', onSelect: () => onNavigate('CREATE') },
           { id: 'COLLECT', label: 'Acquire Memory', description: 'Preserve this moment in your private vault', onSelect: () => onNavigate('COLLECT') },
+          homePath
         ];
       case 'CREATE':
         return [
           { id: 'BUILD', label: 'Direct the Future', description: 'Access advanced world-building tools', onSelect: () => onNavigate('BUILD') },
           { id: 'WATCH', label: 'Return to Observation', description: 'Observe the flow of current transmissions', onSelect: () => onNavigate('WATCH') },
+          homePath
         ];
       default:
         return [
-          { id: 'WATCH', label: 'Return to Threshold', description: 'Find a new lens into the universe', onSelect: () => onNavigate('WATCH') },
+          { id: 'WATCH', label: 'Return to Sequence', description: 'Find a new lens into the universe', onSelect: () => onNavigate('WATCH') },
+          homePath
         ];
     }
   };
 
-  const handleManifest = async () => {
+  const handleAction = async () => {
     if (!manifestPrompt.trim()) return;
     setManifesting(true);
-    const newScene = await simulateCinematicScene(manifestPrompt);
-    if (newScene) {
-      onSceneSimulated(newScene);
-      onClose();
+
+    if (mode === 'CREATE') {
+      const newScene = await simulateCinematicScene(manifestPrompt);
+      if (newScene) {
+        onSceneSimulated(newScene);
+        onClose();
+      }
+    } else {
+      // REMIX (God Mode)
+      const updatedScene = await remixCinematicScene(currentScene, manifestPrompt);
+      if (updatedScene) {
+        onSceneUpdated(updatedScene);
+        onClose();
+      }
     }
+
     setManifesting(false);
+    setManifestPrompt('');
   };
 
   return (
@@ -82,17 +111,34 @@ const OmniPanel: React.FC<OmniPanelProps> = ({
           ))}
         </div>
 
-        {/* Global Action: Manifest */}
+        {/* Global Action: Manifest/Remix */}
         <div className="w-full pt-10 border-t border-white/5 flex flex-col gap-4">
+           {/* Mode Toggle */}
+           <div className="flex justify-end gap-3 mb-1">
+             <button 
+               onClick={() => setMode('CREATE')} 
+               className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all ${mode === 'CREATE' ? 'bg-white text-black' : 'text-white/30 hover:text-white'}`}
+             >
+               Manifest
+             </button>
+             <button 
+               onClick={() => setMode('REMIX')} 
+               className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all ${mode === 'REMIX' ? 'bg-[#ff3b3f] text-white' : 'text-white/30 hover:text-[#ff3b3f]'}`}
+             >
+               Remix Reality
+             </button>
+           </div>
+
            <div className="relative">
              <input 
                value={manifestPrompt}
                onChange={(e) => setManifestPrompt(e.target.value)}
-               placeholder="Manifest a new reality..."
+               placeholder={mode === 'CREATE' ? "Manifest a new reality..." : "Edit the current scene (e.g. 'Make it rainy')..."}
+               onKeyDown={(e) => e.key === 'Enter' && handleAction()}
                className="w-full bg-black/40 border border-white/10 rounded-2xl py-5 px-6 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#ff3b3f]/50 transition-all"
              />
              <button 
-               onClick={handleManifest}
+               onClick={handleAction}
                disabled={manifesting || !manifestPrompt.trim()}
                className={`absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
                  manifesting ? 'bg-white/5' : 'bg-[#ff3b3f] hover:scale-105 shadow-lg shadow-[#ff3b3f]/20'

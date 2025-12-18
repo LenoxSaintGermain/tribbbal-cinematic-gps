@@ -4,6 +4,47 @@ import { Scene } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Helper to generate media (shared between simulate and remix)
+async function generateMedia(prompt: string, type: 'image' | 'video'): Promise<string> {
+  if (type === 'video') {
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-fast-generate-preview',
+      prompt: `Cinematic film, high grain, 35mm style, ${prompt}`,
+      config: {
+        numberOfVideos: 1,
+        resolution: '720p',
+        aspectRatio: '16:9'
+      }
+    });
+    
+    while (!operation.done) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      operation = await ai.operations.getVideosOperation({ operation: operation });
+    }
+    
+    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+    if (downloadLink) {
+      return `${downloadLink}&key=${process.env.API_KEY}`;
+    }
+    throw new Error("Video generation failed");
+  } else {
+    const imageResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: [{ text: `Cinematic film still, high grain, 35mm, anamorphic, ${prompt}` }],
+      config: {
+        imageConfig: { aspectRatio: "16:9" }
+      }
+    });
+
+    for (const part of imageResponse.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    throw new Error("Image generation failed");
+  }
+}
+
 export async function getSceneNarrative(sceneContent: string) {
   try {
     const response = await ai.models.generateContent({
@@ -102,7 +143,6 @@ export async function generatePostInsights(postContent: string) {
 
 /**
  * God Mode: Simulates a high-fidelity cinematic scene from a prompt.
- * Generates metadata with Pro, then generates visual with Flash Image or Veo.
  */
 export async function simulateCinematicScene(userPrompt: string): Promise<Scene | null> {
   try {
@@ -110,7 +150,6 @@ export async function simulateCinematicScene(userPrompt: string): Promise<Scene 
                              userPrompt.toLowerCase().includes('clip') || 
                              userPrompt.toLowerCase().includes('motion');
 
-    // Step 1: Generate Metadata & Detailed GenAI Prompt
     const metaResponse = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `Design a high-fidelity cinematic social media post metadata based on this intent: "${userPrompt}".
@@ -142,55 +181,9 @@ export async function simulateCinematicScene(userPrompt: string): Promise<Scene 
     });
 
     const meta = JSON.parse(metaResponse.text || '{}');
+    const mediaType = isVideoRequested ? 'video' : 'image';
+    const mediaUrl = await generateMedia(meta.genPrompt, mediaType);
 
-    let mediaUrl = "";
-    let mediaType: 'image' | 'video' = isVideoRequested ? 'video' : 'image';
-
-    if (isVideoRequested) {
-      // Use Veo for video generation
-      let operation = await ai.models.generateVideos({
-        model: 'veo-3.1-fast-generate-preview',
-        prompt: `Cinematic film, high grain, 35mm style, ${meta.genPrompt}`,
-        config: {
-          numberOfVideos: 1,
-          resolution: '720p',
-          aspectRatio: '16:9'
-        }
-      });
-      
-      // Polling for completion
-      while (!operation.done) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        operation = await ai.operations.getVideosOperation({ operation: operation });
-      }
-      
-      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      if (downloadLink) {
-        mediaUrl = `${downloadLink}&key=${process.env.API_KEY}`;
-      } else {
-        throw new Error("Video generation failed");
-      }
-    } else {
-      // Use Flash Image for image generation
-      const imageResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: [{ text: `Cinematic film still, high grain, 35mm, anamorphic, ${meta.genPrompt}` }],
-        config: {
-          imageConfig: { aspectRatio: "16:9" }
-        }
-      });
-
-      for (const part of imageResponse.candidates[0].content.parts) {
-        if (part.inlineData) {
-          mediaUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
-        }
-      }
-    }
-
-    if (!mediaUrl) throw new Error("Media generation failed");
-
-    // Populate all required Scene properties to fix TypeScript error
     return {
       id: `sim-${Date.now()}`,
       modality: isVideoRequested ? 'video' : 'photo',
@@ -221,6 +214,121 @@ export async function simulateCinematicScene(userPrompt: string): Promise<Scene 
 
   } catch (error) {
     console.error("Simulation Error:", error);
+    return null;
+  }
+}
+
+/**
+ * Remix Mode: Edits an existing scene based on user directives.
+ * Now supports full attribute modification including URLs and Director details.
+ */
+export async function remixCinematicScene(currentScene: Scene, userPrompt: string): Promise<Scene | null> {
+  try {
+    const isMediaRegenRequested = userPrompt.toLowerCase().includes('generate') || 
+                                  userPrompt.toLowerCase().includes('create visual') ||
+                                  (userPrompt.toLowerCase().includes('change visual') && !userPrompt.includes('http'));
+
+    const contents = `
+      You are a cinematic reality engine. Modify this JSON scene object based on the user's directive.
+      Current Scene JSON: ${JSON.stringify(currentScene)}
+      User Directive: "${userPrompt}"
+      
+      Rules:
+      1. YOU HAVE FULL WRITE ACCESS to every field.
+      2. If the user provides a specific URL (http/https), put it in 'mediaUrl'.
+      3. If the user wants to change the director, role, handle, or city, update the 'director' object.
+      4. If the user wants to change labels like narrative, tone, or vibe, update them.
+      5. If the user implies a modality change (e.g. "make it a product", "change to video"), update 'modality' and 'mediaType'.
+      6. Only set 'genPrompt' if the user specifically asks to GENERATE a new visual via AI.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: contents,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            narrative: { type: Type.STRING },
+            vibe: { type: Type.STRING },
+            tone: { type: Type.STRING },
+            primaryEmotion: { type: Type.STRING },
+            cinematicIntent: { type: Type.STRING },
+            mediaUrl: { type: Type.STRING, nullable: true, description: "Direct URL override" },
+            mediaType: { type: Type.STRING, enum: ['video', 'image'], nullable: true },
+            modality: { type: Type.STRING, enum: ['film', 'video', 'photo', 'audio', 'product'], nullable: true },
+            genPrompt: { type: Type.STRING, nullable: true },
+            director: {
+               type: Type.OBJECT,
+               nullable: true,
+               properties: {
+                 name: { type: Type.STRING, nullable: true },
+                 handle: { type: Type.STRING, nullable: true },
+                 role: { type: Type.STRING, nullable: true },
+                 city: { type: Type.STRING, nullable: true },
+                 avatar: { type: Type.STRING, nullable: true }
+               }
+            },
+            metadata: {
+              type: Type.OBJECT,
+              properties: {
+                location: { type: Type.STRING },
+                score: { type: Type.STRING },
+                camera: { type: Type.STRING }
+              }
+            }
+          },
+          required: ["narrative", "vibe", "tone", "primaryEmotion", "cinematicIntent"]
+        }
+      }
+    });
+
+    const modifications = JSON.parse(response.text || '{}');
+    
+    let newMediaUrl = currentScene.mediaUrl;
+    let newMediaType = modifications.mediaType || currentScene.mediaType;
+    let newModality = modifications.modality || currentScene.modality;
+
+    // 1. Check for Direct URL Override first
+    if (modifications.mediaUrl) {
+      newMediaUrl = modifications.mediaUrl;
+    } 
+    // 2. Check for Generative Request
+    else if (modifications.genPrompt && isMediaRegenRequested) {
+       try {
+         newMediaUrl = await generateMedia(modifications.genPrompt, newMediaType);
+       } catch (e) {
+         console.warn("Media regen failed, keeping old media", e);
+       }
+    }
+
+    // Merge Director Updates
+    const mergedDirector = modifications.director ? {
+      ...currentScene.director,
+      ...modifications.director
+    } : currentScene.director;
+
+    // Merge updates
+    return {
+      ...currentScene,
+      narrative: modifications.narrative,
+      vibe: modifications.vibe,
+      tone: modifications.tone,
+      primaryEmotion: modifications.primaryEmotion,
+      cinematicIntent: modifications.cinematicIntent,
+      modality: newModality as any,
+      mediaType: newMediaType as any,
+      director: mergedDirector,
+      metadata: {
+        ...currentScene.metadata,
+        ...modifications.metadata
+      },
+      mediaUrl: newMediaUrl
+    };
+
+  } catch (error) {
+    console.error("Remix Error:", error);
     return null;
   }
 }
