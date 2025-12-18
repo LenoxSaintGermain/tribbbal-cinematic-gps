@@ -131,7 +131,7 @@ const SceneComponent: React.FC<SceneProps> = ({ scene, isActive, onIntent }) => 
         */}
         <div className={`
           absolute inset-0 z-0
-          md:relative md:inset-auto md:order-2 md:w-[56%] md:h-full md:bg-black
+          md:relative md:inset-auto md:order-2 md:w-[52%] md:h-full md:bg-black
         `}>
            <div className={`w-full h-full relative transition-transform duration-1000 ${scene.modality === 'product' ? 'scale-100 md:scale-[1.03]' : 'scale-100'}`}>
               {scene.mediaType === 'video' ? (
@@ -172,15 +172,18 @@ const SceneComponent: React.FC<SceneProps> = ({ scene, isActive, onIntent }) => 
         */}
         <div className={`
           absolute inset-x-0 bottom-0 z-20 pointer-events-none
-          md:pointer-events-auto md:relative md:inset-auto md:order-1 md:w-[44%] md:h-full md:bg-none
+          md:pointer-events-auto md:relative md:inset-auto md:order-1 md:w-[48%] md:h-full md:bg-none
         `}>
-          {/* Mobile Text Scrim (Gradient) */}
-          <div className="md:hidden absolute inset-x-0 bottom-0 h-[50vh] bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"></div>
+          {/* Mobile Text Scrim (Refined Liquid Dark) */}
+          <div className="md:hidden absolute inset-x-0 bottom-0 h-[55vh] bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent pointer-events-none"></div>
+          
+          {/* Mobile Glass Edge Hint */}
+          <div className="md:hidden absolute inset-x-0 bottom-0 h-[35vh] border-t border-white/5 backdrop-blur-[1px] opacity-50 pointer-events-none"></div>
 
           <div className={`
             relative z-10 flex flex-col justify-end h-full
-            pb-[calc(env(safe-area-inset-bottom)+18px)]
-            md:pb-0 md:justify-center md:pl-16 md:pr-8
+            pb-[calc(env(safe-area-inset-bottom)+20px)]
+            md:pb-0 md:justify-center md:pl-10 md:pr-6
           `}>
             <div className={`
               transition-all duration-1000 delay-300 
@@ -192,7 +195,7 @@ const SceneComponent: React.FC<SceneProps> = ({ scene, isActive, onIntent }) => 
             `}>
               
               {/* Tags */}
-              <div className="flex items-center gap-3 mb-2 md:mb-8">
+              <div className="flex items-center gap-3 mb-3 md:mb-8">
                  <span className="px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-[#ff3b3f]/40 bg-[#ff3b3f]/10 text-[9px] md:text-[clamp(10px,0.8vw,12px)] font-black uppercase tracking-[0.2em] text-[#ff3b3f] md:backdrop-blur-md">
                   {scene.modality}
                  </span>
@@ -202,8 +205,8 @@ const SceneComponent: React.FC<SceneProps> = ({ scene, isActive, onIntent }) => 
               </div>
 
               {/* Director Block */}
-              <div className="flex items-center gap-3 md:gap-6 mb-2 md:mb-10">
-                 <div className="w-0.5 h-6 md:w-1 md:h-20 bg-[#ff3b3f] shadow-[0_0_20px_#ff3b3f]"></div>
+              <div className="flex items-center gap-3 md:gap-6 mb-3 md:mb-10">
+                 <div className="w-0.5 h-8 md:w-1 md:h-20 bg-[#ff3b3f] shadow-[0_0_20px_#ff3b3f]"></div>
                  <div>
                    <p className="text-[8px] md:text-[clamp(10px,0.8vw,12px)] font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-[#ff3b3f] mb-0.5 md:mb-1 shadow-black drop-shadow-sm">
                      {scene.director.role}
@@ -222,19 +225,19 @@ const SceneComponent: React.FC<SceneProps> = ({ scene, isActive, onIntent }) => 
                 text-[clamp(28px,8vw,42px)] leading-[1.05]
                 md:text-[clamp(40px,4.6vw,82px)] md:leading-[0.95]
                 font-black tracking-tighter 
-                text-white mb-3 md:mb-16 drop-shadow-xl
+                text-white mb-4 md:mb-16 drop-shadow-xl
                 line-clamp-4 md:line-clamp-none
               ">
                 {scene.narrative}
               </h3>
 
-              {/* Mobile Metadata Row */}
-              <div className="md:hidden flex items-center gap-4 text-white/70 mb-1">
-                 <span className="text-[12px] font-black uppercase tracking-widest drop-shadow-md">{scene.vibe}</span>
+              {/* Mobile Metadata Row (Refined) */}
+              <div className="md:hidden flex items-center gap-4 text-white/60 mb-1">
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em] drop-shadow-md border border-white/10 px-2 py-1 rounded-md bg-black/20">{scene.vibe}</span>
                  {scene.metadata?.location && (
                    <>
-                     <span className="w-1 h-1 rounded-full bg-[#ff3b3f]"></span>
-                     <span className="text-[12px] font-bold uppercase tracking-widest drop-shadow-md">{scene.metadata.location}</span>
+                     <span className="w-0.5 h-3 bg-white/20"></span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest drop-shadow-md">{scene.metadata.location}</span>
                    </>
                  )}
               </div>
@@ -261,7 +264,7 @@ const SceneComponent: React.FC<SceneProps> = ({ scene, isActive, onIntent }) => 
 
       {/* Mobile Gesture Hint */}
       <div className={`
-        md:hidden absolute bottom-[calc(env(safe-area-inset-bottom)+12px)] left-0 right-0 z-30 pointer-events-none 
+        md:hidden absolute bottom-[calc(env(safe-area-inset-bottom)+8px)] left-0 right-0 z-30 pointer-events-none 
         flex flex-col items-center justify-center gap-1
         transition-opacity duration-1000
       `} style={{ opacity: showHint ? 0.6 : 0 }}>
